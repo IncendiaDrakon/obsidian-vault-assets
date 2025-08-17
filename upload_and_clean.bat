@@ -20,7 +20,12 @@ findstr /C:"%UPLOAD_DIR%/" .gitignore >nul 2>&1 || (
     git push
 )
 
-REM Step 3: Delete local folder (files stay on GitHub)
+REM Step 3: Remove folder from Git index (but keep it on GitHub)
+git rm --cached -r "%UPLOAD_DIR%"
+git commit -m "Stop tracking local folder"
+git push
+
+REM Step 4: Delete local folder
 rmdir /s /q "%UPLOAD_DIR%"
 mkdir "%UPLOAD_DIR%"
 
