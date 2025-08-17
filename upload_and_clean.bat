@@ -1,32 +1,43 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-REM Set your upload folder
+REM ─────────────────────────────────────────────────────────────────────────────
+REM CONFIG
 set "UPLOAD_DIR=drakiverse"
+REM ─────────────────────────────────────────────────────────────────────────────
 
-REM Move to repo root
+REM 1) cd into repo root
 cd /d "%~dp0"
 
-REM Step 1: Add and commit new files
+REM 2) Unskip any previously skipped files so we can stage new ones
+for /f "delims=" %%F in ('git ls-files -- "%UPLOAD_DIR%/*"') do (
+  git update-index --no-skip-worktree "%%F" 2>nul
+)
+
+REM 3) Stage & push your new assets
 git add -f "%UPLOAD_DIR%"
 git commit -m "Upload new assets"
 git push
 
-REM Step 2: Add folder to .gitignore if not already present
-findstr /C:"%UPLOAD_DIR%/" .gitignore >nul 2>&1 || (
-    echo %UPLOAD_DIR%/>>.gitignore
-    git add .gitignore
-    git commit -m "Update .gitignore to exclude %UPLOAD_DIR%"
-    git push
+REM 4) Ensure future files in this folder stay untracked
+findstr /x /c:"%UPLOAD_DIR%/" .gitignore >nul 2>&1 || (
+  echo %UPLOAD_DIR%/>>.gitignore
+  git add .gitignore
+  git commit -m "Ignore %UPLOAD_DIR%/"
+  git push
 )
 
-REM Step 3: Remove folder from Git index (but keep it on GitHub)
-git rm --cached -r "%UPLOAD_DIR%"
-git commit -m "Stop tracking local folder"
-git push
+REM 5) Tell Git to completely ignore future changes (incl. deletions)
+for /f "delims=" %%F in ('git ls-files -- "%UPLOAD_DIR%/*"') do (
+  git update-index --skip-worktree "%%F" 2>nul
+)
 
-REM Step 4: Delete local folder
+REM 6) Wipe out local copy and re-create folder
 rmdir /s /q "%UPLOAD_DIR%"
 mkdir "%UPLOAD_DIR%"
 
-echo Upload complete. Files pushed to GitHub and removed locally.
+echo.
+echo Upload complete!
+echo - Files are on GitHub.
+echo - Local folder cleaned.
+echo - Future changes to %UPLOAD_DIR%/ will be ignored.
